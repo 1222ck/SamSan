@@ -13,6 +13,7 @@ import {
 } from "@/lib/supabase/queries/customers";
 import {
   getCustomerTransactions,
+  createTransaction,
   calcCreditBalance,
   PAYMENT_LABEL,
   type TransactionRow,
@@ -48,6 +49,12 @@ export default function CustomerDetail({ id }: { id: string }) {
   const [newAddress, setNewAddress] = useState("");
   const [newFuelType, setNewFuelType] = useState<string>("경유");
   const [newAddressMemo, setNewAddressMemo] = useState("");
+
+  // 외상 상환
+  const [showRepay, setShowRepay] = useState(false);
+  const [repayAmount, setRepayAmount] = useState("");
+  const [repayMethod, setRepayMethod] = useState("CASH");
+  const [repaying, setRepaying] = useState(false);
 
   const load = useCallback(async () => {
     const [{ data: c }, { data: txs }] = await Promise.all([
@@ -109,6 +116,31 @@ export default function CustomerDetail({ id }: { id: string }) {
   async function handleDeleteAddress(addrId: string) {
     await deleteAddress(addrId);
     load();
+  }
+
+  async function handleRepay(e: React.FormEvent) {
+    e.preventDefault();
+    if (!customer || !repayAmount) return;
+    setRepaying(true);
+    await createTransaction({
+      customer_id: customer.id,
+      address_id: null,
+      quantity_l: null,
+      amount: -Math.abs(parseInt(repayAmount.replace(/,/g, ""), 10)),
+      payment_type: "CREDIT",
+      fuel_type: null,
+      memo: `상환 (${PAYMENT_LABEL[repayMethod]})`,
+    });
+    setRepaying(false);
+    setShowRepay(false);
+    setRepayAmount("");
+    setRepayMethod("CASH");
+    load();
+  }
+
+  function formatAmount(val: string) {
+    const num = val.replace(/[^0-9]/g, "");
+    return num ? parseInt(num).toLocaleString("ko-KR") : "";
   }
 
   const creditBalance = calcCreditBalance(transactions);
@@ -198,11 +230,70 @@ export default function CustomerDetail({ id }: { id: string }) {
 
       {/* 외상 잔액 */}
       {creditBalance > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
-          <span className="text-sm font-medium text-red-700">외상 잔액</span>
-          <span className="text-lg font-bold text-red-700">
-            {creditBalance.toLocaleString("ko-KR")}원
-          </span>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-red-700">외상 잔액</span>
+            <div className="flex items-center gap-3">
+              <span className="text-lg font-bold text-red-700">
+                {creditBalance.toLocaleString("ko-KR")}원
+              </span>
+              <button
+                onClick={() => setShowRepay(!showRepay)}
+                className="text-sm px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                상환 입력
+              </button>
+            </div>
+          </div>
+
+          {showRepay && (
+            <form onSubmit={handleRepay} className="border-t border-red-200 pt-3 space-y-3">
+              <div className="flex gap-2">
+                {[
+                  { value: "CASH", label: "현금" },
+                  { value: "CARD", label: "카드" },
+                  { value: "TRANSFER", label: "계좌이체" },
+                ].map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setRepayMethod(m.value)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      repayMethod === m.value
+                        ? "bg-red-600 text-white border-red-600"
+                        : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={repayAmount}
+                  onChange={(e) => setRepayAmount(formatAmount(e.target.value))}
+                  placeholder="상환 금액 입력"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-400"
+                />
+                <button
+                  type="submit"
+                  disabled={repaying || !repayAmount}
+                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  {repaying ? "저장 중..." : "확인"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRepay(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50"
+                >
+                  취소
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       )}
 
