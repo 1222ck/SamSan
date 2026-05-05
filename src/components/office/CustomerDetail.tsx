@@ -154,7 +154,7 @@ export default function CustomerDetail({ id }: { id: string }) {
   }
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="max-w-2xl w-full space-y-4">
       {/* 뒤로 */}
       <button
         onClick={() => router.push("/office/customers")}

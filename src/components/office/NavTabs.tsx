@@ -12,7 +12,7 @@ export default function NavTabs() {
   const pathname = usePathname();
 
   return (
-    <nav className="bg-white border-b border-gray-200 px-6 flex gap-1">
+    <nav className="bg-white border-b border-gray-200 px-2 sm:px-6 flex gap-1">
       {TABS.map((tab) => {
         const active =
           tab.href === "/office"

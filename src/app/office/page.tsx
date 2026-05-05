@@ -3,7 +3,7 @@ import NewDeliveryForm from "@/components/office/NewDeliveryForm";
 
 export default function OfficePage() {
   return (
-    <div className="grid grid-cols-[1fr_380px] gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 sm:gap-6">
       <SalesBoard />
       <NewDeliveryForm />
     </div>

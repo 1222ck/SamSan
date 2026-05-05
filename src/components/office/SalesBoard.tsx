@@ -89,13 +89,14 @@ export default function SalesBoard() {
       </div>
 
       {/* 배달 목록 */}
-      <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
+      <div className="overflow-y-auto lg:max-h-[calc(100vh-300px)]">
         {loading ? (
           <p className="text-center text-gray-400 py-12 text-sm">불러오는 중...</p>
         ) : transactions.length === 0 ? (
           <p className="text-center text-gray-400 py-12 text-sm">배달 내역이 없습니다</p>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[520px]">
             <thead>
               <tr className="border-b border-gray-100 text-xs text-gray-400 bg-gray-50">
                 <th className="text-left px-5 py-2.5 font-medium">고객</th>
@@ -133,6 +134,7 @@ export default function SalesBoard() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

@@ -13,12 +13,12 @@ export default function OfficeLayout({
 }) {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0">
-        <h1 className="text-lg font-bold text-gray-800">삼산주유소 사무실</h1>
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between shrink-0">
+        <h1 className="text-base sm:text-lg font-bold text-gray-800">삼산주유소 사무실</h1>
         <LogoutButton />
       </header>
       <NavTabs />
-      <main className="flex-1 p-6">{children}</main>
+      <main className="flex-1 p-4 sm:p-6">{children}</main>
     </div>
   );
 }
