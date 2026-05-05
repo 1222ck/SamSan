@@ -63,6 +63,16 @@ export default function NewDeliveryForm() {
     });
     setSubmitting(false);
     if (!error) {
+      const selectedAddress = addresses.find((a) => a.id === addressId);
+      const body = [
+        selectedAddress?.address ?? "주소 없음",
+        note || null,
+      ].filter(Boolean).join(" · ");
+      fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: `새 배달 · ${selected.name}`, body }),
+      }).catch(() => {});
       setDone(true);
       setTimeout(reset, 1500);
     }
