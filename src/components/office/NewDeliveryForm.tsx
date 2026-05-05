@@ -9,7 +9,11 @@ import {
 } from "@/lib/supabase/queries/customers";
 import { createDelivery } from "@/lib/supabase/queries/deliveries";
 
+const FUEL_TYPES = ["등유", "경유"] as const;
+type FuelType = (typeof FUEL_TYPES)[number];
+
 export default function NewDeliveryForm() {
+  const [fuelType, setFuelType] = useState<FuelType>("등유");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CustomerWithPhones[]>([]);
   const [selected, setSelected] = useState<CustomerWithPhones | null>(null);
@@ -39,7 +43,16 @@ export default function NewDeliveryForm() {
     const { data } = await getCustomerAddresses(c.id);
     const list = data ?? [];
     setAddresses(list);
-    if (list.length === 1) setAddressId(list[0].id);
+    // 선택된 유종과 일치하는 주소가 1개면 자동 선택
+    const matched = list.filter((a) => a.fuel_type === fuelType);
+    if (matched.length === 1) setAddressId(matched[0].id);
+    else if (list.length === 1) setAddressId(list[0].id);
+  }
+
+  // 유종 변경 시 주소 선택 초기화
+  function changeFuelType(ft: FuelType) {
+    setFuelType(ft);
+    setAddressId(null);
   }
 
   function reset() {
@@ -64,10 +77,9 @@ export default function NewDeliveryForm() {
     setSubmitting(false);
     if (!error) {
       const selectedAddress = addresses.find((a) => a.id === addressId);
-      const body = [
-        selectedAddress?.address ?? "주소 없음",
-        note || null,
-      ].filter(Boolean).join(" · ");
+      const body = [selectedAddress?.address ?? "주소 없음", note || null]
+        .filter(Boolean)
+        .join(" · ");
       fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,16 +90,41 @@ export default function NewDeliveryForm() {
     }
   }
 
+  const filteredAddresses = addresses.filter((a) => a.fuel_type === fuelType);
+  const showAddresses = filteredAddresses.length > 0 ? filteredAddresses : addresses;
+  const noMatchWarning = selected && addresses.length > 0 && filteredAddresses.length === 0;
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <h2 className="text-base font-semibold text-gray-800 mb-4">새 배달 등록</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* 유종 선택 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">유종</label>
+          <div className="flex gap-2">
+            {FUEL_TYPES.map((ft) => (
+              <button
+                key={ft}
+                type="button"
+                onClick={() => changeFuelType(ft)}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border-2 transition-colors ${
+                  fuelType === ft
+                    ? ft === "등유"
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "bg-gray-700 text-white border-gray-700"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                }`}
+              >
+                {ft}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* 고객 검색 */}
         <div className="relative">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            고객 검색
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">고객 검색</label>
           <input
             type="text"
             value={query}
@@ -120,14 +157,17 @@ export default function NewDeliveryForm() {
         {/* 주소 선택 */}
         {selected && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              배달 주소
-            </label>
-            {addresses.length === 0 ? (
+            <label className="block text-sm font-medium text-gray-700 mb-1">배달 주소</label>
+            {noMatchWarning && (
+              <p className="text-xs text-orange-600 mb-2">
+                {fuelType} 주소가 없습니다. 전체 주소를 표시합니다.
+              </p>
+            )}
+            {showAddresses.length === 0 ? (
               <p className="text-sm text-gray-400 py-2">등록된 주소가 없습니다</p>
             ) : (
               <div className="space-y-2">
-                {addresses.map((a) => (
+                {showAddresses.map((a) => (
                   <label
                     key={a.id}
                     className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
@@ -161,9 +201,7 @@ export default function NewDeliveryForm() {
         {/* 특이사항 */}
         {selected && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              특이사항
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">특이사항</label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}

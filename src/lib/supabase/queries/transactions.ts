@@ -72,6 +72,20 @@ export function calcCreditBalance(transactions: TransactionRow[]) {
     .reduce((sum, t) => sum + t.amount, 0);
 }
 
+export async function updateTransaction(
+  id: string,
+  updates: {
+    quantity_l?: number | null;
+    amount?: number;
+    payment_type?: string;
+    fuel_type?: string | null;
+    memo?: string | null;
+  }
+) {
+  const supabase = createClient();
+  return supabase.from("transactions").update(updates).eq("id", id);
+}
+
 export function calcFuelSummary(transactions: TransactionWithDetails[]) {
   const map: Record<string, { quantity: number; amount: number }> = {};
   for (const t of transactions) {

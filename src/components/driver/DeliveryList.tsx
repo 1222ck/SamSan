@@ -37,14 +37,18 @@ export default function DeliveryList() {
     const supabase = createClient();
     const channel = supabase
       .channel("driver-deliveries")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "deliveries" },
-        () => load()
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [load]);
+
+  function startDelivery(d: DeliveryRow) {
+    // 즉시 UI 업데이트
+    setDeliveries((prev) =>
+      prev.map((item) => item.id === d.id ? { ...item, status: "배달중" } : item)
+    );
+    updateDeliveryStatus(d.id, "배달중").catch(() => load());
+  }
 
   const waiting = deliveries.filter((d) => d.status === "대기");
   const delivering = deliveries.filter((d) => d.status === "배달중");
@@ -83,7 +87,7 @@ export default function DeliveryList() {
         <div className="pt-1">
           {d.status === "대기" && (
             <button
-              onClick={() => updateDeliveryStatus(d.id, "배달중")}
+              onClick={() => startDelivery(d)}
               className="w-full py-4 bg-blue-600 text-white text-lg font-bold rounded-xl hover:bg-blue-700 active:bg-blue-800 transition-colors"
             >
               배달 시작
@@ -103,17 +107,11 @@ export default function DeliveryList() {
   }
 
   if (loading) {
-    return (
-      <p className="text-center text-gray-400 py-16 text-lg">불러오는 중...</p>
-    );
+    return <p className="text-center text-gray-400 py-16 text-lg">불러오는 중...</p>;
   }
 
   if (deliveries.length === 0) {
-    return (
-      <p className="text-center text-gray-400 py-16 text-xl">
-        배달 건이 없습니다
-      </p>
-    );
+    return <p className="text-center text-gray-400 py-16 text-xl">배달 건이 없습니다</p>;
   }
 
   return (
@@ -125,9 +123,7 @@ export default function DeliveryList() {
               배달중 {delivering.length}건
             </h2>
             <div className="space-y-3">
-              {delivering.map((d) => (
-                <DeliveryCard key={d.id} d={d} />
-              ))}
+              {delivering.map((d) => <DeliveryCard key={d.id} d={d} />)}
             </div>
           </section>
         )}
@@ -138,9 +134,7 @@ export default function DeliveryList() {
               대기 {waiting.length}건
             </h2>
             <div className="space-y-3">
-              {waiting.map((d) => (
-                <DeliveryCard key={d.id} d={d} />
-              ))}
+              {waiting.map((d) => <DeliveryCard key={d.id} d={d} />)}
             </div>
           </section>
         )}
