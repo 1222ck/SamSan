@@ -54,7 +54,28 @@ python main.py
 
 `Ctrl+C`로 종료. 정상 종료 시 state.json이 마지막 인덱스로 갱신된다.
 
-## Windows 작업 스케줄러 등록 (자동 시작)
+## 자동 시작 등록 (권장 — 부팅 시 백그라운드 실행)
+
+가장 간단한 방법. 사용자 로그인 후 `pythonw.exe`로 콘솔 창 없이 자동 실행된다.
+
+```powershell
+.\setup-autostart.ps1
+```
+
+이 스크립트가 하는 일:
+- `shell:startup` 폴더에 바로가기 생성
+- `pythonw.exe main.py`를 cti-bridge 디렉토리에서 실행하도록 설정
+- 윈도우 최소화/숨김 모드
+
+해제: `Win+R` → `shell:startup` → "삼산 전화 모니터링" 바로가기 삭제.
+
+확인:
+- 작업 관리자 → 세부 정보 탭 → `pythonw.exe` 보이는지
+- 로그: `logs/cti-bridge.log`
+
+> ⚠️ `pip install -r requirements.txt`와 `.env` 작성을 먼저 끝내야 등록 후 실행이 성공한다.
+
+## Windows 작업 스케줄러 등록 (대안 — 더 견고)
 
 부팅 시 백그라운드 실행되도록 GUI로 등록한다.
 
