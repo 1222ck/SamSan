@@ -94,7 +94,10 @@ def run_loop(cfg: Config, log: logging.Logger) -> int:
 
         current_count = len(phones)
         if current_count > last_count:
-            new_phones = phones[last_count:current_count]
+            # 콜사인은 새 통화를 파일 상단(prepend)에 기록한다.
+            # 따라서 신규 N건은 phones[0:N]. 시간순(오래된→최신)으로 INSERT 되도록 reverse.
+            diff = current_count - last_count
+            new_phones = list(reversed(phones[:diff]))
             process_new_phones(new_phones, cfg.blacklist_phones, inserter, log)
             last_count = current_count
             save_last_count(last_count)
