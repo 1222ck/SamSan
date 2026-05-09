@@ -68,13 +68,28 @@ export default function SalesBoard() {
   useEffect(() => {
     if (date !== todayStr()) return;
     const supabase = createClient();
-    const channel = supabase
-      .channel("sales-board")
-      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
-        load(date);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        supabase.realtime.setAuth(session.access_token);
+      }
+      if (cancelled) return;
+
+      channel = supabase
+        .channel("sales-board")
+        .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
+          load(date);
+        })
+        .subscribe();
+    })();
+
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [date, load]);
 
   function startEdit(t: TransactionWithDetails) {

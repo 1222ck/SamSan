@@ -62,14 +62,29 @@ export default function DeliveryBoard() {
   useEffect(() => {
     loadActive();
     const supabase = createClient();
-    const channel = supabase
-      .channel("deliveries-board")
-      .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, () => {
-        loadActive();
-        if (tab === "날짜별") loadDated(date);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        supabase.realtime.setAuth(session.access_token);
+      }
+      if (cancelled) return;
+
+      channel = supabase
+        .channel("deliveries-board")
+        .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, () => {
+          loadActive();
+          if (tab === "날짜별") loadDated(date);
+        })
+        .subscribe();
+    })();
+
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [loadActive, loadDated, tab, date]);
 
   // 날짜별 탭 진입 or 날짜 변경 시 조회

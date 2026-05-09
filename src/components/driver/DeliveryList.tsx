@@ -35,11 +35,26 @@ export default function DeliveryList() {
   useEffect(() => {
     load();
     const supabase = createClient();
-    const channel = supabase
-      .channel("driver-deliveries")
-      .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        supabase.realtime.setAuth(session.access_token);
+      }
+      if (cancelled) return;
+
+      channel = supabase
+        .channel("driver-deliveries")
+        .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, () => load())
+        .subscribe();
+    })();
+
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [load]);
 
   function startDelivery(d: DeliveryRow) {

@@ -31,10 +31,11 @@ export default function IncomingCallProvider() {
     };
 
     const subscribeIfAllowed = async () => {
-      // 1) 인증된 사용자 확인
+      // 1) 세션 + 사용자 확인
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user || cancelled) return;
 
       // 2) role 확인 — office / admin 만 구독
@@ -48,7 +49,12 @@ export default function IncomingCallProvider() {
         return;
       }
 
-      // 3) realtime 구독 (INSERT 만)
+      // 3) realtime이 RLS를 사용자 권한으로 평가하도록 토큰 동기화 (subscribe 전 필수)
+      if (session.access_token) {
+        supabase.realtime.setAuth(session.access_token);
+      }
+
+      // 4) realtime 구독 (INSERT 만)
       channel = supabase
         .channel("incoming-calls-global")
         .on(
