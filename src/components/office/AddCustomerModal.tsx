@@ -5,14 +5,15 @@ import { createCustomer } from "@/lib/supabase/queries/customers";
 
 type Props = {
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (created?: { id: string; name: string }) => void;
+  initialPhone?: string;
 };
 
-export default function AddCustomerModal({ onClose, onCreated }: Props) {
+export default function AddCustomerModal({ onClose, onCreated, initialPhone }: Props) {
   const [name, setName] = useState("");
   const [type, setType] = useState<"개인" | "업체">("개인");
   const [memo, setMemo] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(initialPhone ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -24,18 +25,18 @@ export default function AddCustomerModal({ onClose, onCreated }: Props) {
     }
     setError("");
     setSubmitting(true);
-    const { error: err } = await createCustomer({
+    const { data, error: err } = await createCustomer({
       name: name.trim(),
       type,
       memo: memo.trim() || null,
       phone: phone.trim(),
     });
     setSubmitting(false);
-    if (err) {
+    if (err || !data) {
       setError("등록 중 오류가 발생했습니다.");
       return;
     }
-    onCreated();
+    onCreated({ id: data.id, name: data.name });
   }
 
   return (

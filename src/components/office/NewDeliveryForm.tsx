@@ -1,18 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   searchCustomers,
   getCustomerAddresses,
+  getCustomerById,
   type CustomerWithPhones,
   type AddressRow,
 } from "@/lib/supabase/queries/customers";
 import { createDelivery } from "@/lib/supabase/queries/deliveries";
+import AddCustomerModal from "./AddCustomerModal";
 
 const FUEL_TYPES = ["등유", "경유"] as const;
 type FuelType = (typeof FUEL_TYPES)[number];
 
 export default function NewDeliveryForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [fuelType, setFuelType] = useState<FuelType>("등유");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CustomerWithPhones[]>([]);
@@ -22,6 +27,8 @@ export default function NewDeliveryForm() {
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [initialPhone, setInitialPhone] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!query.trim() || selected) {
@@ -35,19 +42,44 @@ export default function NewDeliveryForm() {
     return () => clearTimeout(t);
   }, [query, selected]);
 
-  async function pickCustomer(c: CustomerWithPhones) {
-    setSelected(c);
-    setQuery(c.name);
-    setResults([]);
-    setAddressId(null);
-    const { data } = await getCustomerAddresses(c.id);
-    const list = data ?? [];
-    setAddresses(list);
-    // 선택된 유종과 일치하는 주소가 1개면 자동 선택
-    const matched = list.filter((a) => a.fuel_type === fuelType);
-    if (matched.length === 1) setAddressId(matched[0].id);
-    else if (list.length === 1) setAddressId(list[0].id);
-  }
+  const pickCustomer = useCallback(
+    async (c: CustomerWithPhones) => {
+      setSelected(c);
+      setQuery(c.name);
+      setResults([]);
+      setAddressId(null);
+      const { data } = await getCustomerAddresses(c.id);
+      const list = data ?? [];
+      setAddresses(list);
+      // 선택된 유종과 일치하는 주소가 1개면 자동 선택
+      const matched = list.filter((a) => a.fuel_type === fuelType);
+      if (matched.length === 1) setAddressId(matched[0].id);
+      else if (list.length === 1) setAddressId(list[0].id);
+    },
+    [fuelType]
+  );
+
+  // CTI 배너에서 ?customer_id=... 또는 ?phone=... 으로 진입 시 자동 처리
+  useEffect(() => {
+    const customerId = searchParams.get("customer_id");
+    const phone = searchParams.get("phone");
+    if (!customerId && !phone) return;
+
+    // URL 정리 (새로고침 시 재실행 방지)
+    router.replace("/office");
+
+    if (customerId) {
+      (async () => {
+        const { data } = await getCustomerById(customerId);
+        if (data) await pickCustomer(data);
+      })();
+    } else if (phone) {
+      setInitialPhone(phone);
+      setShowAddModal(true);
+    }
+    // pickCustomer는 fuelType 의존, 마운트 시 1회만 동작하면 충분
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 유종 변경 시 주소 선택 초기화
   function changeFuelType(ft: FuelType) {
@@ -234,6 +266,24 @@ export default function NewDeliveryForm() {
           </button>
         )}
       </form>
+
+      {showAddModal && (
+        <AddCustomerModal
+          initialPhone={initialPhone}
+          onClose={() => {
+            setShowAddModal(false);
+            setInitialPhone(undefined);
+          }}
+          onCreated={async (created) => {
+            setShowAddModal(false);
+            setInitialPhone(undefined);
+            if (created) {
+              const { data } = await getCustomerById(created.id);
+              if (data) await pickCustomer(data);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

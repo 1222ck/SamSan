@@ -84,6 +84,16 @@ export async function getCustomerAddresses(customerId: string) {
     .returns<AddressRow[]>();
 }
 
+// 단일 고객 조회 (배달 등록 폼 자동 선택용)
+export async function getCustomerById(id: string) {
+  const supabase = createClient();
+  return supabase
+    .from("customers")
+    .select("id, name, type, memo, phone_numbers(phone)")
+    .eq("id", id)
+    .single<CustomerWithPhones>();
+}
+
 // 고객 목록 전체 조회
 export async function getAllCustomers(search = "") {
   const supabase = createClient();
@@ -120,7 +130,7 @@ export async function createCustomer(params: {
   const { data: customer, error } = await supabase
     .from("customers")
     .insert({ name: params.name, type: params.type, memo: params.memo || null })
-    .select("id")
+    .select("id, name, type, memo")
     .single();
 
   if (error || !customer) return { error };

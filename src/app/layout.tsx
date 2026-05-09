@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import IncomingCallProvider from "@/components/IncomingCallProvider";
 
 const geist = Geist({
   variable: "--font-geist-sans",
@@ -37,7 +38,10 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icon-192.svg" />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <IncomingCallProvider />
+      </body>
     </html>
   );
 }
