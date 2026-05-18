@@ -31,12 +31,17 @@ export default function IncomingCallProvider() {
     };
 
     const subscribeIfAllowed = async () => {
+      // 동시 호출 가드: 이미 채널이 셋업 중/완료면 즉시 종료
+      // (예: 마운트 직후 subscribeIfAllowed() + GoTrueClient._initialize 의 SIGNED_IN 이벤트로
+      //  onAuthStateChange 콜백 안에서 또 호출되는 race condition 방지)
+      if (channel) return;
+
       // 1) 세션 + 사용자 확인
       const {
         data: { session },
       } = await supabase.auth.getSession();
       const user = session?.user;
-      if (!user || cancelled) return;
+      if (!user || cancelled || channel) return;
 
       // 2) role 확인 — office / admin 만 구독
       const { data: profile } = await supabase
@@ -44,7 +49,7 @@ export default function IncomingCallProvider() {
         .select("role")
         .eq("id", user.id)
         .single<{ role: string }>();
-      if (cancelled) return;
+      if (cancelled || channel) return;
       if (!profile || !(["office", "admin"] as AllowedRole[]).includes(profile.role as AllowedRole)) {
         return;
       }
@@ -53,10 +58,13 @@ export default function IncomingCallProvider() {
       if (session.access_token) {
         supabase.realtime.setAuth(session.access_token);
       }
+      if (cancelled || channel) return;
 
       // 4) realtime 구독 (INSERT 만)
-      channel = supabase
-        .channel("incoming-calls-global")
+      //    channel 변수를 먼저 동기적으로 set 해서 다른 동시 호출이 가드에 걸리도록 한다.
+      const newChannel = supabase.channel("incoming-calls-global");
+      channel = newChannel;
+      newChannel
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "incoming_calls" },
