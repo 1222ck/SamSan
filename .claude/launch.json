@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "samsan-next-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "samsan-cti-bridge",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd cti-bridge && python3 main.py"],
+      "port": 0
+    }
+  ]
+}
