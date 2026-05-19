@@ -1,6 +1,5 @@
-self.addEventListener('fetch', (event) => {
-  event.respondWith(fetch(event.request));
-});
+// Firebase Messaging SW는 push/notification 이벤트만 처리한다.
+// fetch 가로채기는 불필요 + dev에서 fetch 실패 시 페이지 전체가 network error로 죽음.
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');

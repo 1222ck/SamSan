@@ -8,6 +8,7 @@ import {
   updateDeliveryStatus,
   type DeliveryRow,
 } from "@/lib/supabase/queries/deliveries";
+import CompleteModal from "@/components/driver/CompleteModal";
 
 const FUEL_BADGE: Record<string, string> = {
   경유: "bg-gray-100 text-gray-700",
@@ -44,6 +45,9 @@ export default function DeliveryBoard() {
   const [date, setDate] = useState(todayStr());
   const [dated, setDated] = useState<DeliveryRow[]>([]);
   const [datedLoading, setDatedLoading] = useState(false);
+
+  // 완료 모달 (driver와 동일 — 결제수단/금액/수량 입력 후 transaction 생성 + status='완료')
+  const [completing, setCompleting] = useState<DeliveryRow | null>(null);
 
   const loadActive = useCallback(async () => {
     const { data } = await getActiveDeliveries();
@@ -149,7 +153,7 @@ export default function DeliveryBoard() {
             <p className="text-center text-gray-400 py-10 text-sm">{tab} 건이 없습니다</p>
           ) : (
             filtered.map((d) => (
-              <ActiveCard key={d.id} d={d} />
+              <ActiveCard key={d.id} d={d} onComplete={() => setCompleting(d)} />
             ))
           )
         )}
@@ -167,11 +171,24 @@ export default function DeliveryBoard() {
           )
         )}
       </div>
+
+      {/* 완료 모달 — driver 와 동일하게 결제수단/금액/수량 입력 후 transaction 생성 */}
+      {completing && (
+        <CompleteModal
+          delivery={completing}
+          onClose={() => {
+            setCompleting(null);
+            // realtime이 보드를 새로고침하지만 즉시 반영 보장 차원에서 한 번 더
+            loadActive();
+            if (tab === "날짜별") loadDated(date);
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function ActiveCard({ d }: { d: DeliveryRow }) {
+function ActiveCard({ d, onComplete }: { d: DeliveryRow; onComplete: () => void }) {
   return (
     <div className="border border-gray-200 rounded-lg p-4 space-y-2 hover:border-gray-300 transition-colors">
       <div className="flex items-center justify-between">
@@ -200,7 +217,7 @@ function ActiveCard({ d }: { d: DeliveryRow }) {
         )}
         {d.status === "배달중" && (
           <button
-            onClick={() => updateDeliveryStatus(d.id, "완료")}
+            onClick={onComplete}
             className="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
             완료 처리
