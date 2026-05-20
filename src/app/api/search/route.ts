@@ -10,7 +10,9 @@ import {
 } from "@/lib/search/openai";
 import {
   ERROR_CODES,
+  SEARCH_ALLOWED_ROLES,
   type RouteDecision,
+  type SearchAllowedRole,
   type SearchPath,
   type SearchResultRow,
   type SearchSuccessResponse,
@@ -44,6 +46,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: ERROR_CODES.UNAUTHORIZED, message: "로그인이 필요합니다." },
       { status: 401 }
+    );
+  }
+
+  // 1-1) 역할(role) 검사 — office/admin 만 검색 허용
+  //      service_role 키로 profiles 조회 (RLS 우회, 안정적)
+  //      driver는 배달 목록 전용이라 고객 DB 전체 검색 불가
+  const admin = createAdminClient();
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single<{ role: string }>();
+
+  if (
+    profileError ||
+    !profile ||
+    !SEARCH_ALLOWED_ROLES.includes(profile.role as SearchAllowedRole)
+  ) {
+    if (profileError) {
+      console.error("profiles 조회 실패:", profileError.message);
+    }
+    return NextResponse.json(
+      { error: ERROR_CODES.FORBIDDEN, message: "검색 권한이 없습니다." },
+      { status: 403 }
     );
   }
 
@@ -137,8 +163,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 4) Supabase RPC 호출 (service_role)
-  const admin = createAdminClient();
+  // 4) Supabase RPC 호출 (service_role, 위에서 만든 admin 재사용)
   const { data, error } = await admin.rpc(
     decision.function,
     decision.params as Record<string, unknown>

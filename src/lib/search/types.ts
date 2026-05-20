@@ -13,8 +13,14 @@ export const ERROR_CODES = {
   VALIDATION_ERROR: "VALIDATION_ERROR",
   LLM_ERROR: "LLM_ERROR",
   DB_ERROR: "DB_ERROR",
-  UNAUTHORIZED: "UNAUTHORIZED",
+  UNAUTHORIZED: "UNAUTHORIZED", // 미인증 (401)
+  FORBIDDEN: "FORBIDDEN", // 권한 부족 (403, 예: driver 계정)
 } as const;
+
+// 검색 API 접근 허용 role 화이트리스트
+// driver는 배달 목록만 보이는 게 원칙이므로 고객 DB 검색 불가
+export const SEARCH_ALLOWED_ROLES = ["office", "admin"] as const;
+export type SearchAllowedRole = (typeof SEARCH_ALLOWED_ROLES)[number];
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
 
