@@ -3,6 +3,7 @@ import type { ExtractedIntent, SearchHit } from "./types";
 import { stripNoise } from "./noise";
 
 const RESULT_LIMIT = 50;
+const FETCH_LIMIT = 5000;
 
 type CustomerRow = {
   id: string;
@@ -31,7 +32,7 @@ async function customerIdsByName(
     .from("customers")
     .select("id")
     .ilike("name", like(q))
-    .limit(RESULT_LIMIT * 2);
+    .limit(FETCH_LIMIT);
   if (error) throw error;
   return new Set((data ?? []).map((r) => r.id as string));
 }
@@ -48,7 +49,7 @@ async function customerIdsByPhoneOrLabel(
     .from("phone_numbers")
     .select("customer_id")
     .or(filters.join(","))
-    .limit(RESULT_LIMIT * 4);
+    .limit(FETCH_LIMIT);
   if (error) throw error;
   return new Set((data ?? []).map((r) => r.customer_id as string));
 }
@@ -61,7 +62,7 @@ async function customerIdsByAddress(
     .from("addresses")
     .select("customer_id")
     .ilike("address", like(q))
-    .limit(RESULT_LIMIT * 4);
+    .limit(FETCH_LIMIT);
   if (error) throw error;
   return new Set((data ?? []).map((r) => r.customer_id as string));
 }
@@ -140,10 +141,33 @@ export async function patternSearch(
   return fetchCustomers(sb, Array.from(ids).slice(0, RESULT_LIMIT), q);
 }
 
+function normalizeIntent(intent: ExtractedIntent): ExtractedIntent {
+  const out: ExtractedIntent = {};
+  if (intent.name) {
+    const v = intent.name.replace(/\s+/g, "").replace(/(씨|네|님)$/, "").trim();
+    if (v) out.name = v;
+  }
+  if (intent.address) {
+    const v = intent.address.replace(/\s+/g, "").trim();
+    if (v) out.address = v;
+  }
+  if (intent.phone) {
+    const v = intent.phone.trim();
+    if (v) out.phone = v;
+  }
+  if (intent.label) {
+    const v = intent.label.trim();
+    if (v) out.label = v;
+  }
+  return out;
+}
+
 export async function intentSearch(
   sb: SupabaseClient,
-  intent: ExtractedIntent,
+  rawIntent: ExtractedIntent,
 ): Promise<SearchHit[]> {
+  const intent = normalizeIntent(rawIntent);
+
   const tasks: Promise<Set<string>>[] = [];
   if (intent.name) tasks.push(customerIdsByName(sb, intent.name));
   if (intent.phone || intent.label) {
