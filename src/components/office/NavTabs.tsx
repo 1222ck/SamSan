@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/office", label: "배달 현황" },
   { href: "/office/customers", label: "고객 관리" },
+  { href: "/search", label: "검색" },
 ];
 
 export default function NavTabs() {
